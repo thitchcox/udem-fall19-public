@@ -35,6 +35,7 @@
 
             <!-- Ground Projection -->
             <group if="$(arg /lane_following/ground_projection)">
+                <remap from="ground_projection/lineseglist_in" to="line_detector_node/segment_list"/>
                     <include file="$(find ground_projection)/launch/ground_projection.launch">
                         <arg name="veh" value="$(arg veh)"/>
                         <arg name="param_file_name" value="$(arg param_file_name)"/>
@@ -50,7 +51,7 @@
                     <arg name="param_file_name" value="$(arg param_file_name)"/>
                 </include>
             </group>
-            
+
             <!-- Lane controller -->
             <group if="$(arg /lane_following/lane_controller)">
                 <remap from="lane_controller_node/lane_pose" to="lane_filter_node/lane_pose"/>
@@ -72,6 +73,9 @@
                 </include>
             </group>
 
+            <!-- Test image export -->
+            <!-- <node pkg="rosbag" type="play" name="rosbag" required="true" args="$(find image_view)/test.bag"/> -->
+            
     </group> -->
     <!-- End Lane Control -->
 </launch>
