@@ -104,5 +104,5 @@ class Controller():
         omega = (2 * v * sin_alpha) / lookup_distance
         
         return v, omega
-    
-    
+
+
