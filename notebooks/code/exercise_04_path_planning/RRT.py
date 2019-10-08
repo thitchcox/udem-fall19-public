@@ -1,7 +1,7 @@
 import random
 import math
 import matplotlib.pyplot as plt
-
+import numpy as np
 
 class RRT_planner:
     """
@@ -56,8 +56,22 @@ class RRT_planner:
             # Objective: create a valid new_node according to the RRT algorithm and append it to "self.list_nodes"
             # You can call any of the functions defined lower, or add your own.
 
-            # YOUR CODE HERE
+            # Randomly sample the area
+            random_node = self.get_random_node()
 
+            # Get the nearest node in the existing graph
+            nearest_node_id = self.get_closest_node_id(self.list_nodes, random_node)
+            nearest_node = self.list_nodes[nearest_node_id]
+
+            # Generate the new node in the direction of the random node
+            new_node = self.extend(nearest_node, random_node)
+
+            # Check that all points along that path are obstacle-free
+            if self.collision(new_node, self.list_obstacles):
+                continue
+
+            # The new node has passed all tests and is considered valid.  Append it to the list.
+            self.list_nodes.append(new_node)
             #######
 
             if show_anim and it % 5 == 0:
@@ -66,10 +80,10 @@ class RRT_planner:
             if self.distance_to_goal(new_node.x, new_node.y) <= self.max_branch_length:
                 print("Reached goal")
                 return self.make_final_path(len(self.list_nodes) - 1)
-
+            
             if show_anim and it % 5:
                 self.draw_graph(random_node)
-
+                
         return None  # cannot find path
 
     def extend(self, or_node, dest_node):
@@ -191,21 +205,66 @@ class RTT_Path_Follower:
     def __init__(self, path, local_env):
         self.path = path
         self.env = local_env
+        
+        #######
+        # Initialize this index to the last node
+        self.current_node_idx = -2
+        self.mode = 'attitude'
+        #######
     
     def next_action(self):
         # Current position and angle
         cur_pos_x = self.env.cur_pos[0]
-        cur_pos_y = self.env.cur_pos[2]
+        cur_pos_y = -self.env.cur_pos[2]
         cur_angle = self.env.cur_angle
         
-        v = 0.
-        omega = 0.
+        #######
+        omega = 0
+        v = 0
         
-        #######
-        #
-        # YOUR CODE HERE: change v and omega so that the Duckiebot keeps on following the path
-        #
-        #######
+        # Current target point
+        target_x = self.path[self.current_node_idx][0]
+        target_y = -self.path[self.current_node_idx][1]
+                
+        # Obtain delta_z resolved in robot frame.
+        # To minimize heading error, drive delta_z to zero
+        cos_theta = math.cos(cur_angle)
+        sin_theta = math.sin(cur_angle)
+        C_bw = np.array([[cos_theta, sin_theta], [-sin_theta, cos_theta]])
+        
+        # Target point in world
+        r_ta_w = np.array([target_x, target_y])
+        
+        # Current robot position in world
+        r_ba_w = np.array([cur_pos_x, cur_pos_y])
+
+        # Displacement of target relative to robot, resolved in robot body frame
+        r_tz_b = C_bw @ (r_ta_w - r_ba_w)
+        
+        # Attitude error (delta_z)
+        err_att = r_tz_b[1]
+        
+        # Position error
+        err_pos = math.sqrt(r_tz_b[0] ** 2 + r_tz_b[1] ** 2)
+        
+        # Set the controller mode.  Minimize attitude error first.
+        if abs(err_att) <= 1e-3:
+            self.mode = 'position'
+            
+        # If in attitiude mode, drive the attitude error to zero
+        if self.mode == 'attitude':
+            k_p_att = 5
+            omega = k_p_att * err_att
+        
+        if self.mode == 'position':
+            k_p_pos = 5
+            v = k_p_pos * err_pos
+            
+        # If position error is sufficiently reduced, target the next node.
+        if abs(err_pos) < 1e-2:
+            self.current_node_idx -= 1
+            self.mode = 'attitude'
+        ####### 
         
         return v, omega
     
