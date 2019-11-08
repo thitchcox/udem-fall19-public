@@ -6,7 +6,6 @@ import numpy as np
 import rospy
 from .line_detector_interface import Detections, LineDetectorInterface
 
-
 class LineDetectorHSV(dtu.Configurable, LineDetectorInterface):
     """ LineDetectorHSV """
 
