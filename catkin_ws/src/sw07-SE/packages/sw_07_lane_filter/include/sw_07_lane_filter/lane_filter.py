@@ -43,7 +43,8 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
             new_d = self.d 
             new_phi = self.phi 
             ########
-            # Your code here
+            new_d = new_d + v * dt * np.sin(new_phi)
+            new_phi = new_phi + w * dt
             ########
             self.d = new_d
             self.phi = new_phi
@@ -53,8 +54,28 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
 
             new_weight = 1
             ########
-            # Your code here
-            ########
+            # If no segments available, don't update the weight
+            if len(ds) == 0:
+                new_weight = self.weight
+            else:
+                # Compute the mean of the ds and phis
+                ds_mean = np.mean(ds)
+                phis_mean = np.mean(phis)
+                
+                # Compute the distance from the particle's estimate to the mean
+                d_diff = self.d - ds_mean
+                phi_diff = self.phi - phis_mean
+
+                # Rescale each distance by the range to make unitless
+                d_rescale = d_diff / self.d_max
+                phi_rescale = phi_diff / self.phi_max
+
+                # Compute a distance metric
+                dist = np.sqrt(d_rescale ** 2 + phi_rescale ** 2)
+                
+                # Remap to [0, infty) to [1, 0) using exp
+                new_weight = np.exp(-dist)
+                ########
             self.weight = new_weight
 
         def perturb(self, dd, dphi):
@@ -116,9 +137,11 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
         for i in range(self.nb_particles):
             d = 0
             phi = 0
-        ########
-        # Your code here
-        ########
+            ########
+            d = np.random.normal(self.mean_d_0, self.sigma_d_0)
+            phi = np.random.normal(self.mean_phi_0, self.sigma_phi_0)   
+            # TODO : Try initializing from a different distribution?        
+            ########
             initial_particles.append(self.Particle(d, phi, config))
         self.particles = initial_particles
 
@@ -150,7 +173,18 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
         # Sample a new set of particles
         new_particles = self.particles
         ########
-        # Your code here
+        # Get weights
+        particle_weights = []
+        for i in range(self.nb_particles):
+            particle_weights.append(float(self.particles[i].weight))
+
+        # Normalize the weights
+        particle_weights = particle_weights / np.sum(particle_weights)
+
+        # Initialize the list of new particles
+        new_particles = []
+        for i in range(self.nb_particles):
+            new_particles.append(np.random.choice(self.particles, p=particle_weights))
         ########
         self.particles = new_particles
 
@@ -166,7 +200,22 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
         d = 0
         phi = 0
         ########
-        # Your code here
+        # Choose the particle with the largest weight
+        # Make a list of the weights
+        particle_weights = []
+        for i in range(self.nb_particles):
+            particle_weights.append(self.particles[i].weight)
+
+        # Get index of max
+        idx_max = np.where(particle_weights == np.amax(particle_weights))
+
+        # If idx_max is more than one, take median index
+        if len(idx_max[0]) > 1:
+            idx_max = int(np.median(idx_max[0]))
+
+        # Set the return
+        d = self.particles[idx_max].d
+        phi = self.particles[idx_max].phi
         ########
 
         return [d, phi]
