@@ -41,8 +41,9 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
         def predict(self, dt, v, w):
             # Update d and phi depending on dt, v and w
             new_d = self.d 
-            new_phi = self.phi 
+            new_phi = self.phi
             ########
+            dt = 0.1 * dt
             new_d = new_d + v * dt * np.sin(new_phi)
             new_phi = new_phi + w * dt
             ########
@@ -58,13 +59,13 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
             if len(ds) == 0:
                 new_weight = self.weight
             else:
-                # Compute the mean of the ds and phis
-                ds_mean = np.mean(ds)
-                phis_mean = np.mean(phis)
+                # Compute the median of the ds and phis
+                ds_median = np.median(ds)
+                phis_median = np.median(phis)
                 
                 # Compute the distance from the particle's estimate to the mean
-                d_diff = self.d - ds_mean
-                phi_diff = self.phi - phis_mean
+                d_diff = self.d - ds_median
+                phi_diff = self.phi - phis_median
 
                 # Rescale each distance by the range to make unitless
                 d_rescale = d_diff / self.d_max
@@ -216,6 +217,10 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
         # Set the return
         d = self.particles[idx_max].d
         phi = self.particles[idx_max].phi
+
+        # Store results as a class property
+        self.current_d = d
+        self.current_phi = phi
         ########
 
         return [d, phi]
@@ -224,7 +229,8 @@ class LaneFitlerParticle(Configurable, LaneFilterInterface):
         # Test to know if the bot is in the lane
         in_lane = True
         ########
-        # Your code here
+        if np.abs(self.current_d) > self.lanewidth / 2:
+            in_lane = False
         ########
         return in_lane
 
