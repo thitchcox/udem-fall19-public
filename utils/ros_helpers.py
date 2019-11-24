@@ -1,10 +1,10 @@
 import sys
-if '/duckietown/simulation' not in sys.path:
-    sys.path.append('/duckietown/simulation')
+if '/duckietown/simulation/src' not in sys.path:
+    sys.path.append('/duckietown/simulation/src')
 
 def launch_env(simclass=None):
     print(sys.path)
-    from src.gym_duckietown.simulator import Simulator
+    from gym_duckietown.simulator import Simulator
 
     simclass = Simulator if simclass is None else simclass
 
